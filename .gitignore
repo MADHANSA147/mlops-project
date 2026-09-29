@@ -1,0 +1,10 @@
+backend/venv/
+backend/__pycache__/
+backend/.env
+backend/mlruns/
+backend/.pytest_cache/
+project/node_modules/
+project/dist/
+project/.bolt/
+*.pyc
+.DS_Store

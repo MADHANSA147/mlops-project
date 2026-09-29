@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  # ── FastAPI Backend ──────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aipi-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DB_NAME=aipi_db
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-long-random-secret-key}
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+      - REDDIT_USER_AGENT=${REDDIT_USER_AGENT:-AIPI/1.0}
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    volumes:
+      - ./ml/data:/app/ml/data        # Mount dataset
+      - ./ml/artifacts:/app/ml/artifacts  # Persist model artifacts
+    depends_on:
+      mongodb:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - aipi-network
+
+  # ── MongoDB ────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: aipi-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    networks:
+      - aipi-network
+
+  # ── MLflow Tracking Server ─────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.22.0
+    container_name: aipi-mlflow
+    ports:
+      - "5000:5000"
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    restart: unless-stopped
+    networks:
+      - aipi-network
+
+volumes:
+  mongodb_data:
+  mlflow_data:
+
+networks:
+  aipi-network:
+    driver: bridge
